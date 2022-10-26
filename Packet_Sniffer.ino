@@ -1,112 +1,172 @@
-/*
-  ===========================================
-       Copyright (c) 2018 Stefan Kremser
-              github.com/spacehuhn
-  ===========================================
-*/
-
 #include "SH1106Wire.h"
+#include "./esppl_functions.h"
 #include <ESP8266WiFi.h>
 SH1106Wire display(0x3C, SDA, SCL); // use builtin i2C
 
-// ===== SETTINGS ===== //
-#define LED 2              /* LED pin (2=built-in LED) */
-#define LED_INVERT true    /* Invert HIGH/LOW for LED */
-#define SERIAL_BAUD 115200 /* Baudrate for serial communication */
-#define CH_TIME 140        /* Scan time (in ms) per channel */
-#define PKT_RATE 5         /* Min. packets before it gets recognized as an attack */
-#define PKT_TIME 1         /* Min. interval (CH_TIME*CH_RANGE) before it gets recognized as an attack */
+// button states and previous states
+int lState = 0; int plState = 1; 
+int rState = 0; int prState = 1;
 
-// Channels to scan on (US=1-11, EU=1-13, JAP=1-14)
-const short channels[] = { 1,2,3,4,5,6,7,8,9,10,11,12,13/*,14*/ };
+#define ltBtn 5 // left button
+#define rtBtn 7 // right button
 
-// ===== Runtime variables ===== //
-int ch_index { 0 };               // Current index of channel array
-int packet_rate { 0 };            // Deauth packet counter (resets with each update)
-int attack_counter { 0 };         // Attack counter
-unsigned long update_time { 0 };  // Last update time
-unsigned long ch_time { 0 };      // Last channel hop time
 
-// ===== Sniffer function ===== //
-void sniffer(uint8_t *buf, uint16_t len) {
-  if (!buf || len < 28) return; // Drop packets without MAC header
+String packet[7];
+String devices[100][3]; int devCnt = 0;
+String srcMac, ssid, src, dest;
+char srcOctet[2], destOctet[2];
+int addr, fst, ft;
+String pktType;
 
-  byte pkt_type = buf[12]; // second half of frame control field
-  //byte* addr_a = &buf[16]; // first MAC address
-  //byte* addr_b = &buf[22]; // second MAC address
+int filter = 0; // 0 = ALL, 1 = DEAUTH, 2 = PROBE REQ
 
-  // If captured packet is a deauthentication or dissassociaten frame
-  if (pkt_type == 0xA0 || pkt_type == 0xC0) {
-    ++packet_rate;
+void cb(esppl_frame_info *info) { /*--- WiFi Scanner Function ---*/
+  ssid = "";
+    src = "";  // source 
+  
+  Serial.print("\n");
+  Serial.print("FT: ");  
+  Serial.print((int) info->frametype);
+  
+  Serial.print(" FST: ");  
+  Serial.print((int) info->framesubtype);
+  
+  Serial.print(" SRC: ");
+  for (int i = 0; i < 6; i++) Serial.printf("%02x", info->sourceaddr[i]);
+      for (int i= 0; i< 6; i++) { 
+      sprintf(srcOctet, "%02x", info->sourceaddr[i]); 
+      src+=srcOctet;
+    }
+  
+  Serial.print(" DEST: ");
+  for (int i = 0; i < 6; i++) Serial.printf("%02x", info->receiveraddr[i]);
+    dest = "";   // dest MAC
+    for (int i= 0; i< 6; i++) { 
+      sprintf(destOctet, "%02x", info->receiveraddr[i]); dest+=destOctet;
+    }
+  
+  Serial.print(" RSSI: ");
+  Serial.print(info->rssi);
+  
+  Serial.print(" SEQ: ");
+  Serial.print(info->seq_num);
+  
+  Serial.print(" CHNL: ");
+  Serial.print(info->channel);
+  
+  if (info->ssid_length > 0) {
+    Serial.print(" SSID: ");
+    for (int i = 0; i < info->ssid_length; i++) Serial.print((char) info->ssid[i]);    
+  }
+  if (info->ssid_length > 0) {
+     for (int i= 0; i< info->ssid_length; i++) { ssid+= (char) info->ssid[i]; }
+    }
+
+   // append packets metadata to packet list
+    packet[0] = (String) info->frametype;
+    packet[1] = (String) info->framesubtype;
+    packet[2] = src;
+    packet[3] = dest;
+    packet[4] = (String) info->rssi;
+    packet[5] = (String) info->channel;
+    packet[6] = ssid;
+    ft = packet[0].toInt(); fst = packet[1].toInt();     
+}
+
+void printPacket() { // function to print wifi packets to the screen
+
+  // flag packet w/ frame + subframe type
+  if (filter==0 || (filter==1 && ft == 0 and fst == 12) || (filter==2 && ft == 0 and fst == 4 )) {
+    if      (ft == 0 and (fst == 0 or fst == 1)) pktType = "Association Req.";
+    else if (ft == 0 and (fst == 2 or fst == 3)) pktType = "Re-Assoc";
+    else if (ft == 0 and fst == 4) pktType = "Probe Request";
+    else if (ft == 0 and fst == 8 ) pktType = "Beacon";
+    else if (ft == 0 and fst == 10) pktType = "Disassociation";
+    else if (ft == 0 and fst == 11) pktType = "Authentication";
+    else if (ft == 0 and fst == 12) pktType = "De-Authentication";
+    else if (ft == 0) pktType = "Management";
+    else if (ft == 1) pktType = "Control";
+    else if (ft == 2) pktType = "Data";
+    else pktType = "Extension";
+
+    srcMac = packet[2];
+    display.drawString(0,0,"PKT: "); display.drawString(30,0,pktType);
+    display.drawString(0,8,"SRC: "); display.drawString(30,8,srcMac); 
+    display.drawString(0,16,"DST: "); display.drawString(30,16, packet[3]);
+    display.drawString(0,24,"RSS: "); display.drawString(30,24,packet[4]); 
+    display.drawString(0,32,"CH: "); display.drawString(30,32, packet[5]);
+    display.drawString(0,40,"SSID: ");
+    if (packet[6].length() < 18) { display.drawString(30,40,packet[6]); }
+    else if (packet[6].length() > 1) { display.drawString(30,40,packet[6].substring(0, 17 ) + "..."); }
+    
   }
 }
 
-// ===== Attack detection functions ===== //
-void attack_started() {
-  digitalWrite(LED, !LED_INVERT); // turn LED on
-  Serial.println("ATTACK DETECTED");
+// check if button is pressed 
+void checkForPress() {
+  lState = digitalRead(ltBtn);
+  rState = digitalRead(rtBtn);
+  
+  if (lState == 0 && lState!=plState && filter>0) {filter--;}
+  else if (rState ==0 && rState!=prState && filter<2) {filter++;}
+  else if(lState == 0 && lState!=plState) {filter = 2;}
+  else if(rState ==0 && rState!=prState) {filter = 0;}
+  
+  plState = lState;
+  prState = rState;
+  
+  
+  
 }
 
-void attack_stopped() {
-  digitalWrite(LED, LED_INVERT); // turn LED off
-  Serial.println("ATTACK STOPPED");
+
+void updateMenu() { // update scroll menu and packet type selection
+  display.drawLine(0,54, 127,54);
+  display.drawLine(20,54, 20,63);
+  display.fillTriangle(8, 59, 11, 56, 11, 62);
+  display.drawLine(107,54, 107,63); 
+  display.fillTriangle(119, 59, 116, 56, 116, 62);
+  
+  if (filter == 0) {
+   display.drawString(55,54,"ALL");
+  }
+  else if (filter == 1) {
+    display.drawString(42,54,"DEAUTH");
+  }
+  else {
+    display.drawString(45,54,"PROBE");
+  }
 }
 
-// ===== Setup ===== //
 void setup() {
-  Serial.begin(SERIAL_BAUD); // Start serial communication
-
-  pinMode(LED, OUTPUT); // Enable LED pin
-  digitalWrite(LED, LED_INVERT);
-
-  WiFi.disconnect();                   // Disconnect from any saved or active WiFi connections
-  wifi_set_opmode(STATION_MODE);       // Set device to client/station mode
-  wifi_set_promiscuous_rx_cb(sniffer); // Set sniffer function
-  wifi_set_channel(channels[0]);        // Set channel
-  wifi_promiscuous_enable(true);       // Enable sniffer
-
-  Serial.println("Started \\o/");
+  // pinMode(ltBtn, INPUT_PULLUP);
+   // pinMode(rtBtn, INPUT_PULLUP);
+  
+  delay(500);
+  Serial.begin(115200);
+  display.init();
+  display.flipScreenVertically();
+  display.setTextAlignment(TEXT_ALIGN_LEFT);
+  display.setFont(ArialMT_Plain_10);
+  display.drawString(42,54,"DEAUTH");
+  esppl_init(cb);
 }
 
-// ===== Loop ===== //
 void loop() {
-  unsigned long current_time = millis(); // Get current time (in ms)
-
-  // Update each second (or scan-time-per-channel * channel-range)
-  if (current_time - update_time >= (sizeof(channels)*CH_TIME)) {
-    update_time = current_time; // Update time variable
-
-    // When detected deauth packets exceed the minimum allowed number
-    if (packet_rate >= PKT_RATE) {
-      ++attack_counter; // Increment attack counter
-    } else {
-      if(attack_counter >= PKT_TIME) attack_stopped();
-      attack_counter = 0; // Reset attack counter
+  esppl_sniffing_start();
+  while (true) {
+    for (int i = 1; i < 15; i++ ) {
+      esppl_set_channel(i);
+      while (esppl_process_frames()) {
+        //
+      }
     }
-
-    // When attack exceeds minimum allowed time
-    if (attack_counter == PKT_TIME) {
-      attack_started();
-    }
-
-    Serial.print("Packets/s: ");
-    Serial.println(packet_rate);
-
-    packet_rate = 0; // Reset packet rate
-  }
-
-  // Channel hopping
-  if (sizeof(channels) > 1 && current_time - ch_time >= CH_TIME) {
-    ch_time = current_time; // Update time variable
-
-    // Get next channel
-    ch_index = (ch_index+1) % (sizeof(channels)/sizeof(channels[0]));
-    short ch = channels[ch_index];
-
-    // Set channel
-    //Serial.print("Set channel to ");
-    //Serial.println(ch);
-    wifi_set_channel(ch);
-  }
-
+    // checkForPress();
+    display.clear();
+    updateMenu();
+    printPacket();
+    display.display();
+    //if (filter>0) delay(600); //dumb delay to display packets longer
+    delay(0);
+  }  
 }
