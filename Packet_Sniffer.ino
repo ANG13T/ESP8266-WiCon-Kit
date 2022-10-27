@@ -6,7 +6,7 @@ SH1106Wire display(0x3C, SDA, SCL); // use builtin i2C
 // button and led pins use (https://iotbytes.wordpress.com/nodemcu-pinout/) for reference
 const int leftButton = 2;
 const int rightButton = 0;
-const int led = 14;
+const int led = 13;
 
 
 // button states and previous states
