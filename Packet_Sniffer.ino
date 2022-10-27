@@ -11,6 +11,14 @@ const int led = 13;
 // display state (0 = home, 1 = packet monitoring, 2 = deauth checker, 3 = access point creation)
 int displayState = 0;
 
+const char *options[3] = {
+    "Packet Monitor",
+    "Deauther Check",
+    "Access Point"
+};
+
+int menuPointer = 0;
+
 // button states and previous states
 int lState = 0; int plState = 1;
 int rState = 0; int prState = 1;
@@ -79,6 +87,22 @@ void cb(esppl_frame_info *info) { /*--- WiFi Scanner Function ---*/
   ft = packet[0].toInt(); fst = packet[1].toInt();
 }
 
+void displayMenu() {
+  for(int i = 0; i < 3; i++) {
+    if(menuPointer == i) {
+        char buf[2048];
+        const char *pretext = "> ";
+        const char *text = options[i];
+        strcpy(buf,pretext);
+        strcat(buf,text);
+      display.drawString(10, 10 + (10 * i), buf);
+    }else{
+      display.drawString(10, 10 + (10 * i), options[i]);
+    }
+  }
+  display.drawLine(0, 48, 127, 48);
+}
+
 void printPacket() { // function to print wifi packets to the screen
 
   // flag packet w/ frame + subframe type
@@ -112,6 +136,16 @@ void printPacket() { // function to print wifi packets to the screen
   }
 }
 
+void menuButtonPress() {
+  lState = digitalRead(leftButton);
+  rState = digitalRead(rightButton);
+
+  if(rState == 1) {
+    menuPointer += 1;
+    delay(60);
+  }
+}
+
 // check if button is pressed
 void checkForPress() {
   lState = digitalRead(leftButton);
@@ -136,8 +170,9 @@ void checkForPress() {
 
 
 void printHomeScreen() {
-  display.drawString(12, 12, "WiCon Kit");
-  display.drawString(12, 30, "By Angelina Tsuboi");
+  display.drawString(33, 0, "WiCon Kit");
+  displayMenu();
+  display.drawString(12, 50, "By Angelina Tsuboi");
 }
 
 void updateMenu() { // update scroll menu and packet type selection
@@ -180,6 +215,7 @@ void setup() {
 
 void loop() {
   if(displayState == 0) {
+      menuButtonPress();
       display.clear();
      printHomeScreen();
      display.display();
