@@ -140,9 +140,20 @@ void menuButtonPress() {
   lState = digitalRead(leftButton);
   rState = digitalRead(rightButton);
 
-  if(rState == 1) {
+  if(rState == LOW && menuPointer == 2) {
+     menuPointer = 0;
+    delay(200);
+  }else if(rState == LOW){
     menuPointer += 1;
-    delay(60);
+    delay(200);
+  }
+
+  if(lState == LOW && menuPointer == 0) {
+     menuPointer = 2;
+    delay(200);
+  }else if(lState == LOW){
+    menuPointer -= 1;
+    delay(200);
   }
 }
 
