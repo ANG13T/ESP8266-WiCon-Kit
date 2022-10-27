@@ -92,14 +92,14 @@ void printPacket() { // function to print wifi packets to the screen
     else pktType = "Extension";
 
     srcMac = packet[2];
-    display.drawString(0,0,"PKT: "); display.drawString(30,0,pktType);
-    display.drawString(0,8,"SRC: "); display.drawString(30,8,srcMac); 
-    display.drawString(0,16,"DST: "); display.drawString(30,16, packet[3]);
-    display.drawString(0,24,"RSS: "); display.drawString(30,24,packet[4]); 
-    display.drawString(0,32,"CH: "); display.drawString(30,32, packet[5]);
-    display.drawString(0,40,"SSID: ");
-    if (packet[6].length() < 18) { display.drawString(30,40,packet[6]); }
-    else if (packet[6].length() > 1) { display.drawString(30,40,packet[6].substring(0, 17 ) + "..."); }
+    display.drawString(0,14,"PKT: "); display.drawString(30,14,pktType);
+    display.drawString(0,22,"SRC: "); display.drawString(30,22,srcMac); 
+    display.drawString(0,30,"DST: "); display.drawString(30,30, packet[3]);
+    display.drawString(0,38,"RSS: "); display.drawString(30,38,packet[4]); 
+    display.drawString(0,46,"CH: "); display.drawString(30,46, packet[5]);
+    display.drawString(0,54,"SSID: ");
+    if (packet[6].length() < 18) { display.drawString(30,54,packet[6]); }
+    else if (packet[6].length() > 1) { display.drawString(30,54,packet[6].substring(0, 17 ) + "..."); }
     
   }
 }
@@ -120,20 +120,20 @@ void checkForPress() {
 
 
 void updateMenu() { // update scroll menu and packet type selection
-  display.drawLine(0,54, 127,54);
-  display.drawLine(20,54, 20,63);
-  display.fillTriangle(8, 59, 11, 56, 11, 62);
-  display.drawLine(107,54, 107,63); 
-  display.fillTriangle(119, 59, 116, 56, 116, 62);
+  display.drawLine(0,12, 127,12);
+  display.drawLine(20,0, 20,12);
+  display.fillTriangle(8, 5, 11, 2, 11, 8);
+  display.drawLine(107,0, 107,12); 
+  display.fillTriangle(119, 5, 116, 2, 116, 8);
   
   if (filter == 0) {
-   display.drawString(55,54,"ALL");
+   display.drawString(55,0,"ALL");
   }
   else if (filter == 1) {
-    display.drawString(42,54,"DEAUTH");
+    display.drawString(42,0,"DEAUTH");
   }
   else {
-    display.drawString(45,54,"PROBE");
+    display.drawString(45,0,"PROBE");
   }
 }
 
