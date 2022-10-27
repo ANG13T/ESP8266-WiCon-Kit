@@ -21,7 +21,7 @@ int menuPointer = 0;
 
 // button states and previous states
 int lState = 0; int plState = 1;
-int rState = 0; int prState = 1;
+int rState = 0; 
 
 String packet[7];
 String devices[100][3]; int devCnt = 0;
@@ -140,20 +140,18 @@ void menuButtonPress() {
   lState = digitalRead(leftButton);
   rState = digitalRead(rightButton);
 
-  if(rState == LOW && menuPointer == 2) {
+  // uni-directional menu scroller (left = navigation, right = selection)
+  if(lState == LOW && menuPointer == 2) {
      menuPointer = 0;
-    delay(200);
-  }else if(rState == LOW){
+    delay(300);
+  }else if(lState == LOW){
     menuPointer += 1;
-    delay(200);
+    delay(300);
   }
 
-  if(lState == LOW && menuPointer == 0) {
-     menuPointer = 2;
-    delay(200);
-  }else if(lState == LOW){
-    menuPointer -= 1;
-    delay(200);
+  if(rState == LOW) {
+     displayState = menuPointer + 1;
+    delay(300);
   }
 }
 
@@ -162,21 +160,14 @@ void checkForPress() {
   lState = digitalRead(leftButton);
   rState = digitalRead(rightButton);
 
-  if (lState == 0 && lState != plState && filter > 0) {
-    filter--;
-  }
-  else if (rState == 0 && rState != prState && filter < 2) {
+  if (lState == 0 && lState != plState && filter < 2) {
     filter++;
   }
   else if (lState == 0 && lState != plState) {
-    filter = 2;
-  }
-  else if (rState == 0 && rState != prState) {
     filter = 0;
   }
 
   plState = lState;
-  prState = rState;
 }
 
 
@@ -193,7 +184,7 @@ void updateMenu() { // update scroll menu and packet type selection
     display.drawLine(20, 0, 20, 12);
     display.fillTriangle(8, 5, 11, 2, 11, 8);
     display.drawLine(107, 0, 107, 12);
-    display.fillTriangle(119, 5, 116, 2, 116, 8);
+    display.drawString(116, 5, "+");
 
     if (filter == 0) {
       display.drawString(55, 0, "ALL");
@@ -250,7 +241,7 @@ void loop() {
       updateMenu();
       printPacket();
       display.display();
-      //if (filter>0) delay(600); //dumb delay to display packets longer
+      if (filter>0) delay(600);
       delay(0);
     }
   }
