@@ -3,13 +3,15 @@
 #include <ESP8266WiFi.h>
 SH1106Wire display(0x3C, SDA, SCL); // use builtin i2C
 
+// button and led pins use (https://iotbytes.wordpress.com/nodemcu-pinout/) for reference
+const int leftButton = 2;
+const int rightButton = 0;
+const int led = 14;
+
+
 // button states and previous states
 int lState = 0; int plState = 1; 
 int rState = 0; int prState = 1;
-
-#define ltBtn 5 // left button
-#define rtBtn 7 // right button
-
 
 String packet[7];
 String devices[100][3]; int devCnt = 0;
@@ -104,8 +106,8 @@ void printPacket() { // function to print wifi packets to the screen
 
 // check if button is pressed 
 void checkForPress() {
-  lState = digitalRead(ltBtn);
-  rState = digitalRead(rtBtn);
+  lState = digitalRead(leftButton);
+  rState = digitalRead(rightButton);
   
   if (lState == 0 && lState!=plState && filter>0) {filter--;}
   else if (rState ==0 && rState!=prState && filter<2) {filter++;}
@@ -113,10 +115,7 @@ void checkForPress() {
   else if(rState ==0 && rState!=prState) {filter = 0;}
   
   plState = lState;
-  prState = rState;
-  
-  
-  
+  prState = rState;  
 }
 
 
@@ -139,10 +138,12 @@ void updateMenu() { // update scroll menu and packet type selection
 }
 
 void setup() {
-  // pinMode(ltBtn, INPUT_PULLUP);
-   // pinMode(rtBtn, INPUT_PULLUP);
+   pinMode(leftButton, INPUT_PULLUP);
+   pinMode(rightButton, INPUT_PULLUP);
+   pinMode(led, OUTPUT);
   
   delay(500);
+  // digitalWrite(led, HIGH);
   Serial.begin(115200);
   display.init();
   display.flipScreenVertically();
@@ -154,6 +155,8 @@ void setup() {
 
 void loop() {
   esppl_sniffing_start();
+
+
   while (true) {
     for (int i = 1; i < 15; i++ ) {
       esppl_set_channel(i);
@@ -161,7 +164,9 @@ void loop() {
         //
       }
     }
-    // checkForPress();
+
+    digitalWrite(led, HIGH);
+    checkForPress();
     display.clear();
     updateMenu();
     printPacket();
