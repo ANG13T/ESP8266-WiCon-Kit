@@ -13,15 +13,32 @@ int displayState = 0;
 
 const char *options[3] = {
     "Packet Monitor",
-    "Deauther Check",
-    "Access Point"
+    "Haxx Detector",
+    "FTP Honeypot"
 };
+
+// Haxx Detector Variables
+const short channels[] = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13}; // Max: US 11, EU 13, JAP 14
+int ch_index { 0 };               
+int packet_rate { 0 };            
+int attack_counter { 0 };         
+unsigned long update_time { 0 };  
+unsigned long ch_time { 0 };
+
+void haxx_sniffer(uint8_t *buf, uint16_t len) {
+  if (!buf || len < 28) return;
+  byte pkt_type = buf[12];
+  
+  if (pkt_type == 0xA0 || pkt_type == 0xC0) { // flag deauth & dissassociation frames
+    ++packet_rate;
+  }
+}
 
 int menuPointer = 0;
 
 // button states and previous states
-int lState = 0; int plState = 1;
-int rState = 0; 
+int lState = 0; 
+int rState = 0; int prState = 1;
 
 String packet[7];
 String devices[100][3]; int devCnt = 0;
@@ -85,6 +102,7 @@ void cb(esppl_frame_info *info) { /*--- WiFi Scanner Function ---*/
   packet[5] = (String) info->channel;
   packet[6] = ssid;
   ft = packet[0].toInt(); fst = packet[1].toInt();
+  
 }
 
 void displayMenu() {
@@ -95,9 +113,9 @@ void displayMenu() {
         const char *text = options[i];
         strcpy(buf,pretext);
         strcat(buf,text);
-      display.drawString(10, 10 + (10 * i), buf);
+      display.drawString(10, 10 + (12 * i), buf);
     }else{
-      display.drawString(10, 10 + (10 * i), options[i]);
+      display.drawString(10, 10 + (12 * i), options[i]);
     }
   }
   display.drawLine(0, 48, 127, 48);
@@ -160,21 +178,25 @@ void checkForPress() {
   lState = digitalRead(leftButton);
   rState = digitalRead(rightButton);
 
-  if (lState == 0 && lState != plState && filter < 2) {
+  if (rState == 0 && rState != prState && filter < 2) {
     filter++;
   }
-  else if (lState == 0 && lState != plState) {
+  else if (rState == 0 && rState != prState) {
     filter = 0;
   }
 
-  plState = lState;
+  if(lState == 0) {
+    displayState = 0;
+  }
+
+  prState = rState;
 }
 
 
 void printHomeScreen() {
-  display.drawString(33, 0, "WiCon Kit");
+  display.drawString(40, 0, "WiCon Kit");
   displayMenu();
-  display.drawString(12, 50, "By Angelina Tsuboi");
+  display.drawString(18, 50, "By Angelina Tsuboi");
 }
 
 void updateMenu() { // update scroll menu and packet type selection
@@ -184,7 +206,7 @@ void updateMenu() { // update scroll menu and packet type selection
     display.drawLine(20, 0, 20, 12);
     display.fillTriangle(8, 5, 11, 2, 11, 8);
     display.drawLine(107, 0, 107, 12);
-    display.drawString(116, 5, "+");
+    display.drawString(116, 0, "+");
 
     if (filter == 0) {
       display.drawString(55, 0, "ALL");
@@ -211,9 +233,10 @@ void setup() {
   display.flipScreenVertically();
   display.setTextAlignment(TEXT_ALIGN_LEFT);
   display.setFont(ArialMT_Plain_10);
-  display.drawString(42, 54, "DEAUTH");
   esppl_init(cb);
 }
+
+// HAXX Detector
 
 void loop() {
   if(displayState == 0) {
@@ -241,7 +264,7 @@ void loop() {
       updateMenu();
       printPacket();
       display.display();
-      if (filter>0) delay(600);
+      // if (filter>0) delay(600); (delay to make packets appear longer)
       delay(0);
     }
   }
