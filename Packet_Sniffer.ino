@@ -1,3 +1,21 @@
+/*
+*    ___       __   ___  ________  ________  ________           ___  __    ___  _________   
+*   |\  \     |\  \|\  \|\   ____\|\   __  \|\   ___  \        |\  \|\  \ |\  \|\___   ___\ 
+*    \ \  \    \ \  \ \  \ \  \___|\ \  \|\  \ \  \\ \  \       \ \  \/  /|\ \  \|___ \  \_| 
+*     \ \  \  __\ \  \ \  \ \  \    \ \  \\\  \ \  \\ \  \       \ \   ___  \ \  \   \ \  \  
+*      \ \  \|\__\_\  \ \  \ \  \____\ \  \\\  \ \  \\ \  \       \ \  \\ \  \ \  \   \ \  \ 
+*       \ \____________\ \__\ \_______\ \_______\ \__\\ \__\       \ \__\\ \__\ \__\   \ \__\
+*        \|____________|\|__|\|_______|\|_______|\|__| \|__|        \|__| \|__|\|__|    \|__|
+*                                                                                                                                                                         
+*                                                                                         
+*  A compact and portable WiFi reconnaissance suite based on the ESP8266
+*  https://github.com/angelina-tsuboi/ESP8266-WiCon-Kit
+* 
+*  By Angelina Tsuboi (angelinatsuboi.net)
+*  
+*/
+
+
 #include "SH1106Wire.h"
 #include "./esppl_functions.h"
 #include <ESP8266WiFi.h>
@@ -143,11 +161,21 @@ void displayMenu() {
   display.drawLine(0, 48, 127, 48);
 }
 
+// TODO: fix this
 bool checkPacketReturnTypes(int filter, int ft, int fst) {
   return (
     filter == 0  
     || (filter == 1 && ft == 0 and fst == 12)
     || (filter == 2 && ft == 0 and fst == 4 )
+    || (filter == 3 && ft == 0 and (fst == 0 or fst == 1))
+    || (filter == 4 && ft == 0 and (fst == 2 or fst == 3))
+    || (filter == 5 && ft == 0 and fst == 8)
+    || (filter == 6 && ft == 0 and fst == 10)
+    || (filter == 7 && ft == 0 and fst == 11)
+    || (filter == 8 && ft == 0)
+    || (filter == 9 && ft == 1)
+    || (filter == 10 && ft == 2)
+    || filter == 11
   );
 }
 
@@ -158,7 +186,7 @@ void printPacket() { // function to print wifi packets to the screen
     if      (ft == 0 and (fst == 0 or fst == 1)) pktType = "Association Req.";
     else if (ft == 0 and (fst == 2 or fst == 3)) pktType = "Re-Assoc";
     else if (ft == 0 and fst == 4) pktType = "Probe Request";
-    else if (ft == 0 and fst == 8 ) pktType = "Beacon";
+    else if (ft == 0 and fst == 8) pktType = "Beacon";
     else if (ft == 0 and fst == 10) pktType = "Disassociation";
     else if (ft == 0 and fst == 11) pktType = "Authentication";
     else if (ft == 0 and fst == 12) pktType = "De-Authentication";
