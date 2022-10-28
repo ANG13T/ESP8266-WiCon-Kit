@@ -56,6 +56,21 @@ String pktType;
 
 int filter = 0; // 0 = ALL, 1 = DEAUTH, 2 = PROBE REQ
 
+const char *filters[12] = {
+  "ALL",
+  "DEAUTH",
+  "PROBE",
+  "ASSOC",
+  "R-ASSOC",
+  "BEACON",
+  "D-ASSOC",
+  "AUTH",
+  "MANGMNT",
+  "CTRL",
+  "DATA",
+  "EXTEN"
+};
+
 void cb(esppl_frame_info *info) { /*--- WiFi Scanner Function ---*/
   ssid = "";
   src = "";  // source
@@ -128,10 +143,18 @@ void displayMenu() {
   display.drawLine(0, 48, 127, 48);
 }
 
+bool checkPacketReturnTypes(int filter, int ft, int fst) {
+  return (
+    filter == 0  
+    || (filter == 1 && ft == 0 and fst == 12)
+    || (filter == 2 && ft == 0 and fst == 4 )
+  );
+}
+
 void printPacket() { // function to print wifi packets to the screen
 
   // flag packet w/ frame + subframe type
-  if (filter == 0 || (filter == 1 && ft == 0 and fst == 12) || (filter == 2 && ft == 0 and fst == 4 )) {
+  if (checkPacketReturnTypes(filter, ft, fst)) {
     if      (ft == 0 and (fst == 0 or fst == 1)) pktType = "Association Req.";
     else if (ft == 0 and (fst == 2 or fst == 3)) pktType = "Re-Assoc";
     else if (ft == 0 and fst == 4) pktType = "Probe Request";
@@ -185,7 +208,7 @@ void checkForPress() {
   lState = digitalRead(leftButton);
   rState = digitalRead(rightButton);
 
-  if (rState == 0 && rState != prState && filter < 2) {
+  if (rState == 0 && rState != prState && filter < 11) {
     filter++;
   }
   else if (rState == 0 && rState != prState) {
@@ -216,13 +239,13 @@ void updateMenu() { // update scroll menu and packet type selection
     display.drawString(116, 0, "+");
 
     if (filter == 0) {
-      display.drawString(55, 0, "ALL");
+      display.drawString(55, 0, (String)filters[filter]);
     }
     else if (filter == 1) {
-      display.drawString(42, 0, "DEAUTH");
+      display.drawString(42, 0, (String)filters[filter]);
     }
     else {
-      display.drawString(45, 0, "PROBE");
+      display.drawString(45, 0, (String)filters[filter]);
     }
   }
 
