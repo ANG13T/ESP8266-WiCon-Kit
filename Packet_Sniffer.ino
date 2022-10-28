@@ -8,7 +8,7 @@ const int leftButton = 2;
 const int rightButton = 0;
 const int led = 13;
 
-// display state (0 = home, 1 = packet monitoring, 2 = deauth checker, 3 = access point creation)
+// display state (0 = home, 1 = packet monitoring, 2 = haxx detector, 3 = ftp honeypot)
 int displayState = 0;
 
 const char *options[3] = {
@@ -24,6 +24,7 @@ int packet_rate { 0 };
 int attack_counter { 0 };
 unsigned long update_time { 0 };
 unsigned long ch_time { 0 };
+bool attackInProgress = false;
 
 void haxx_sniffer(uint8_t *buf, uint16_t len) {
   if (!buf || len < 28) return;
@@ -240,11 +241,22 @@ void setup() {
 
 void startAttack() {
   digitalWrite(led, HIGH);
+  attackInProgress = true;
+}
+
+void displayHaxxScreen() {
+    String displayText = "Scanning Packets...";
+    if(attackInProgress) {
+      displayText = "Attack Detected...";
+    }
+    display.drawString(10, 40, displayText);
 }
 
 void endAttack(){
   digitalWrite(led, LOW);
+  attackInProgress = false;
 }
+
 
 void loop() {
   if (displayState == 0) {
@@ -277,7 +289,7 @@ void loop() {
     }
   } else if (displayState == 2) {
     unsigned long current_time = millis();
-
+    displayHaxxScreen();
     if (current_time - update_time >= (sizeof(channels) * 100)) {
       update_time = current_time;
 
@@ -285,7 +297,7 @@ void loop() {
         ++attack_counter;
       }
       else {
-        if (attack_counter >= 1) stopAttack();
+        if (attack_counter >= 1) endAttack();
         attack_counter = 0;
       }
 
