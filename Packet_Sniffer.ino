@@ -12,23 +12,23 @@ const int led = 13;
 int displayState = 0;
 
 const char *options[3] = {
-    "Packet Monitor",
-    "Haxx Detector",
-    "FTP Honeypot"
+  "Packet Monitor",
+  "Haxx Detector",
+  "FTP Honeypot"
 };
 
 // Haxx Detector Variables
 const short channels[] = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13}; // Max: US 11, EU 13, JAP 14
-int ch_index { 0 };               
-int packet_rate { 0 };            
-int attack_counter { 0 };         
-unsigned long update_time { 0 };  
+int ch_index { 0 };
+int packet_rate { 0 };
+int attack_counter { 0 };
+unsigned long update_time { 0 };
 unsigned long ch_time { 0 };
 
 void haxx_sniffer(uint8_t *buf, uint16_t len) {
   if (!buf || len < 28) return;
   byte pkt_type = buf[12];
-  
+
   if (pkt_type == 0xA0 || pkt_type == 0xC0) { // flag deauth & dissassociation frames
     ++packet_rate;
   }
@@ -37,7 +37,7 @@ void haxx_sniffer(uint8_t *buf, uint16_t len) {
 int menuPointer = 0;
 
 // button states and previous states
-int lState = 0; 
+int lState = 0;
 int rState = 0; int prState = 1;
 
 String packet[7];
@@ -102,19 +102,19 @@ void cb(esppl_frame_info *info) { /*--- WiFi Scanner Function ---*/
   packet[5] = (String) info->channel;
   packet[6] = ssid;
   ft = packet[0].toInt(); fst = packet[1].toInt();
-  
+
 }
 
 void displayMenu() {
-  for(int i = 0; i < 3; i++) {
-    if(menuPointer == i) {
-        char buf[2048];
-        const char *pretext = "> ";
-        const char *text = options[i];
-        strcpy(buf,pretext);
-        strcat(buf,text);
+  for (int i = 0; i < 3; i++) {
+    if (menuPointer == i) {
+      char buf[2048];
+      const char *pretext = "> ";
+      const char *text = options[i];
+      strcpy(buf, pretext);
+      strcat(buf, text);
       display.drawString(10, 10 + (12 * i), buf);
-    }else{
+    } else {
       display.drawString(10, 10 + (12 * i), options[i]);
     }
   }
@@ -159,16 +159,16 @@ void menuButtonPress() {
   rState = digitalRead(rightButton);
 
   // uni-directional menu scroller (left = navigation, right = selection)
-  if(lState == LOW && menuPointer == 2) {
-     menuPointer = 0;
+  if (lState == LOW && menuPointer == 2) {
+    menuPointer = 0;
     delay(300);
-  }else if(lState == LOW){
+  } else if (lState == LOW) {
     menuPointer += 1;
     delay(300);
   }
 
-  if(rState == LOW) {
-     displayState = menuPointer + 1;
+  if (rState == LOW) {
+    displayState = menuPointer + 1;
     delay(300);
   }
 }
@@ -185,7 +185,7 @@ void checkForPress() {
     filter = 0;
   }
 
-  if(lState == 0) {
+  if (lState == 0) {
     displayState = 0;
   }
 
@@ -238,15 +238,23 @@ void setup() {
 
 // HAXX Detector
 
+void startAttack() {
+  digitalWrite(led, HIGH);
+}
+
+void endAttack(){
+  digitalWrite(led, LOW);
+}
+
 void loop() {
-  if(displayState == 0) {
-      menuButtonPress();
-      display.clear();
-     printHomeScreen();
-     display.display();
-     delay(0);
-    
-  }else if (displayState == 1) {
+  if (displayState == 0) {
+    menuButtonPress();
+    display.clear();
+    printHomeScreen();
+    display.display();
+    delay(0);
+
+  } else if (displayState == 1) {
     esppl_sniffing_start();
 
 
@@ -266,6 +274,33 @@ void loop() {
       display.display();
       // if (filter>0) delay(600); (delay to make packets appear longer)
       delay(0);
+    }
+  } else if (displayState == 2) {
+    unsigned long current_time = millis();
+
+    if (current_time - update_time >= (sizeof(channels) * 100)) {
+      update_time = current_time;
+
+      if (packet_rate >= 1) {
+        ++attack_counter;
+      }
+      else {
+        if (attack_counter >= 1) stopAttack();
+        attack_counter = 0;
+      }
+
+      if (attack_counter == 1) {
+        startAttack();
+      }
+      packet_rate = 0;
+    }
+
+    // Channel hopping
+    if (sizeof(channels) > 1 && current_time - ch_time >= 100) {
+      ch_time = current_time; // Update time variable
+      ch_index = (ch_index + 1) % (sizeof(channels) / sizeof(channels[0]));
+      short ch = channels[ch_index];
+      esppl_set_channel(ch);
     }
   }
 }
