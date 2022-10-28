@@ -25,6 +25,7 @@ int attack_counter { 0 };
 unsigned long update_time { 0 };
 unsigned long ch_time { 0 };
 bool attackInProgress = false;
+bool isDeauthentication = false;
 
 void haxx_sniffer(uint8_t *buf, uint16_t len) {
   if (!buf || len < 28) return;
@@ -32,6 +33,11 @@ void haxx_sniffer(uint8_t *buf, uint16_t len) {
 
   if (pkt_type == 0xA0 || pkt_type == 0xC0) { // flag deauth & dissassociation frames
     ++packet_rate;
+    if(pkt_type == 0xC0) {
+      isDeauthentication = false;
+    }else{
+      isDeauthentication = true;
+    }
   }
 }
 
@@ -245,11 +251,15 @@ void startAttack() {
 }
 
 void displayHaxxScreen() {
+  display.clear();
     String displayText = "Scanning Packets...";
-    if(attackInProgress) {
-      displayText = "Attack Detected...";
+    if(attackInProgress && isDeauthentication) {
+      displayText = "Deauthentication Attack!";
+    }else if(attackInProgress && !isDeauthentication) {
+      displayText = "Dissassociaten Attack!";
     }
     display.drawString(10, 40, displayText);
+    display.display();
 }
 
 void endAttack(){
