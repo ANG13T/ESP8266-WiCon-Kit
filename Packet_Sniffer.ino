@@ -306,11 +306,15 @@ void displayHaxxScreen() {
     String displayText = "Scanning Packets...";
     if(attackInProgress && isDeauthentication) {
       displayText = "Deauthentication Attack!";
+      display.drawXbm(50, 5, warning_width, warning_height, warning);
     }else if(attackInProgress && !isDeauthentication) {
       displayText = "Dissassociaten Attack!";
+      display.drawXbm(50, 5, warning_width, warning_height, warning);
+    }else{
+      display.drawXbm(50, 5, wifi_width, wifi_height, wifi);
     }
-    display.drawXbm(0, 0, warning_width, warning_height, warning);
-    display.drawString(10, 40, displayText);
+    
+    display.drawString(20, 44, displayText);
     display.display();
 }
 
