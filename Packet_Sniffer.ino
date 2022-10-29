@@ -15,7 +15,6 @@
 *  
 */
 
-
 #include "SH1106Wire.h"
 #include "./esppl_functions.h"
 #include <ESP8266WiFi.h>
