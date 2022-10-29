@@ -89,6 +89,22 @@ const char *filters[12] = {
   "EXTEN"
 };
 
+
+const char *filterNames[12] = {
+  "ALL",
+  "De-Authentication",
+  "Probe Request",
+  "Association Req.",
+  "Re-Assoc",
+  "Beacon",
+  "De-Authentication",
+  "Authentication",
+  "Management",
+  "Control",
+  "Data",
+  "Extension"
+};
+
 void cb(esppl_frame_info *info) { /*--- WiFi Scanner Function ---*/
   ssid = "";
   src = "";  // source
@@ -182,7 +198,6 @@ bool checkPacketReturnTypes(int filter, int ft, int fst) {
 void printPacket() { // function to print wifi packets to the screen
 
   // flag packet w/ frame + subframe type
-  if (checkPacketReturnTypes(filter, ft, fst)) {
     if      (ft == 0 and (fst == 0 or fst == 1)) pktType = "Association Req.";
     else if (ft == 0 and (fst == 2 or fst == 3)) pktType = "Re-Assoc";
     else if (ft == 0 and fst == 4) pktType = "Probe Request";
@@ -195,21 +210,22 @@ void printPacket() { // function to print wifi packets to the screen
     else if (ft == 2) pktType = "Data";
     else pktType = "Extension";
 
-    srcMac = packet[2];
-    display.drawString(0, 14, "PKT: "); display.drawString(30, 14, pktType);
-    display.drawString(0, 22, "SRC: "); display.drawString(30, 22, srcMac);
-    display.drawString(0, 30, "DST: "); display.drawString(30, 30, packet[3]);
-    display.drawString(0, 38, "RSS: "); display.drawString(30, 38, packet[4]);
-    display.drawString(0, 46, "CH: "); display.drawString(30, 46, packet[5]);
-    display.drawString(0, 54, "SSID: ");
-    if (packet[6].length() < 18) {
-      display.drawString(30, 54, packet[6]);
-    }
-    else if (packet[6].length() > 1) {
-      display.drawString(30, 54, packet[6].substring(0, 17 ) + "...");
+    if(filter == 0 || (String)filterNames[filter] == pktType) {
+      srcMac = packet[2];
+      display.drawString(0, 14, "PKT: "); display.drawString(30, 14, pktType);
+      display.drawString(0, 22, "SRC: "); display.drawString(30, 22, srcMac);
+      display.drawString(0, 30, "DST: "); display.drawString(30, 30, packet[3]);
+      display.drawString(0, 38, "RSS: "); display.drawString(30, 38, packet[4]);
+      display.drawString(0, 46, "CH: "); display.drawString(30, 46, packet[5]);
+      display.drawString(0, 54, "SSID: ");
+      if (packet[6].length() < 18) {
+        display.drawString(30, 54, packet[6]);
+      }
+      else if (packet[6].length() > 1) {
+        display.drawString(30, 54, packet[6].substring(0, 17 ) + "...");
+      }
     }
 
-  }
 }
 
 void menuButtonPress() {
@@ -303,19 +319,28 @@ void startAttack() {
 
 void displayHaxxScreen() {
   display.clear();
-    String displayText = "Scanning Packets...";
+    String displayText = "Deauthentication Attack!";
     if(attackInProgress && isDeauthentication) {
       displayText = "Deauthentication Attack!";
       display.drawXbm(50, 5, warning_width, warning_height, warning);
+      display.drawString(5, 44, displayText);
     }else if(attackInProgress && !isDeauthentication) {
-      displayText = "Dissassociaten Attack!";
+      displayText = "Dissassociation Attack!";
       display.drawXbm(50, 5, warning_width, warning_height, warning);
+      display.drawString(5, 44, displayText);
     }else{
       display.drawXbm(50, 5, wifi_width, wifi_height, wifi);
+      display.drawString(20, 44, displayText);
     }
     
-    display.drawString(20, 44, displayText);
     display.display();
+}
+
+void checkHaxxPress() {
+  lState = digitalRead(leftButton);
+  if (lState == 0) {
+    displayState = 0;
+  }
 }
 
 void endAttack(){
@@ -344,7 +369,6 @@ void loop() {
         }
       }
 
-      digitalWrite(led, HIGH);
       checkForPress();
       display.clear();
       updateMenu();
@@ -356,6 +380,7 @@ void loop() {
   } else if (displayState == 2) {
     unsigned long current_time = millis();
     displayHaxxScreen();
+    checkHaxxPress();
     if (current_time - update_time >= (sizeof(channels) * 100)) {
       update_time = current_time;
 
