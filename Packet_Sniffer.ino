@@ -368,7 +368,6 @@ void loop() {
           //
         }
       }
-
       checkForPress();
       display.clear();
       updateMenu();
