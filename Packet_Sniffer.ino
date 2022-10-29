@@ -17,6 +17,7 @@
 
 #include "SH1106Wire.h"
 #include "./esppl_functions.h"
+#include "graphics.h"
 #include <ESP8266WiFi.h>
 SH1106Wire display(0x3C, SDA, SCL); // use builtin i2C
 
@@ -308,6 +309,7 @@ void displayHaxxScreen() {
     }else if(attackInProgress && !isDeauthentication) {
       displayText = "Dissassociaten Attack!";
     }
+    display.drawXbm(0, 0, warning_width, warning_height, warning);
     display.drawString(10, 40, displayText);
     display.display();
 }
