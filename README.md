@@ -42,3 +42,7 @@
 ## Schematics
 
 ## Special Thanks and Resources
+The WiCon kit is a derivation of previous ESP8266 WiFi recon features developed by Spacehuhn, Alex Lynd, and Kody Kinzie. Check out the resources below!
+- [SpacehuhnTech/DeauthDetector](https://github.com/SpacehuhnTech/DeauthDetector)
+- [HakCat-Tech/HaxxDetector](https://github.com/HakCat-Tech/HaxxDetector)
+- [skickar/ESP8266_Router_Honeypot](https://github.com/skickar/ESP8266_Router_Honeypot)
