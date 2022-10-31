@@ -1,24 +1,71 @@
 /*
-*    ___       __   ___  ________  ________  ________           ___  __    ___  _________   
-*   |\  \     |\  \|\  \|\   ____\|\   __  \|\   ___  \        |\  \|\  \ |\  \|\___   ___\ 
-*    \ \  \    \ \  \ \  \ \  \___|\ \  \|\  \ \  \\ \  \       \ \  \/  /|\ \  \|___ \  \_| 
-*     \ \  \  __\ \  \ \  \ \  \    \ \  \\\  \ \  \\ \  \       \ \   ___  \ \  \   \ \  \  
-*      \ \  \|\__\_\  \ \  \ \  \____\ \  \\\  \ \  \\ \  \       \ \  \\ \  \ \  \   \ \  \ 
-*       \ \____________\ \__\ \_______\ \_______\ \__\\ \__\       \ \__\\ \__\ \__\   \ \__\
-*        \|____________|\|__|\|_______|\|_______|\|__| \|__|        \|__| \|__|\|__|    \|__|
-*                                                                                                                                                                         
-*                                                                                         
-*  A compact and portable WiFi reconnaissance suite based on the ESP8266
-*  https://github.com/angelina-tsuboi/ESP8266-WiCon-Kit
-* 
-*  By Angelina Tsuboi (angelinatsuboi.net)
-*  
+     ___       __   ___  ________  ________  ________           ___  __    ___  _________
+    |\  \     |\  \|\  \|\   ____\|\   __  \|\   ___  \        |\  \|\  \ |\  \|\___   ___\
+     \ \  \    \ \  \ \  \ \  \___|\ \  \|\  \ \  \\ \  \       \ \  \/  /|\ \  \|___ \  \_|
+      \ \  \  __\ \  \ \  \ \  \    \ \  \\\  \ \  \\ \  \       \ \   ___  \ \  \   \ \  \
+       \ \  \|\__\_\  \ \  \ \  \____\ \  \\\  \ \  \\ \  \       \ \  \\ \  \ \  \   \ \  \
+        \ \____________\ \__\ \_______\ \_______\ \__\\ \__\       \ \__\\ \__\ \__\   \ \__\
+         \|____________|\|__|\|_______|\|_______|\|__| \|__|        \|__| \|__|\|__|    \|__|
+
+
+   A compact and portable WiFi reconnaissance suite based on the ESP8266
+   https://github.com/angelina-tsuboi/ESP8266-WiCon-Kit
+
+   By Angelina Tsuboi (angelinatsuboi.net)
+
 */
+
+#if LWIP_FEATURES && !LWIP_IPV6
+
+#define HAVE_NETDUMP 0
+
+#ifndef STASSID
+#define STASSID "NETWORK_NAME" // set the SSID (name) of the Wi-Fi network the ESP8266 will connect to for internet
+#define STAPSK  "NETWORK_PASS" // set the password of the Wi-Fi network the ESP8266 will connect to for internet
+#define NEWSSID  "Wicon_Wifi" // set the name (SSID) of the Wi-Fi network the ESP8266 will create
+#define NEWPASS  "123456" // set the password of the Wi-Fi network the ESP8266 will create
+#endif
 
 #include "SH1106Wire.h"
 #include "./esppl_functions.h"
 #include "graphics.h"
 #include <ESP8266WiFi.h>
+#include <lwip/napt.h>
+#include <lwip/dns.h>
+#include <dhcpserver.h>
+#include <ESPCanary.h>
+
+#define NAPT 1000
+#define NAPT_PORT 10
+
+#if HAVE_NETDUMP
+
+#include <NetDump.h>
+
+void dump(int netif_idx, const char* data, size_t len, int out, int success) {
+  (void)success;
+  Serial.print(out ? F("out ") : F(" in "));
+  Serial.printf("%d ", netif_idx);
+
+  // optional filter example: if (netDump_is_ARP(data))
+  {
+    netDump(Serial, data, len);
+    //netDumpHex(Serial, data, len);
+  }
+}
+#endif
+
+String canary = "http://canarytokens.com/feedback/articles/tags/f7jx4e7s0i91k9uzgonweoapy/contact.php";  //grab FREE web bug/URL tokens at http://canarytokens.org
+String ftp_user = "admin";    //if you replace this with "%" it will accept ANY username
+String ftp_pass = "password"; //if you replace this with "%" it will accept ANY password
+bool append_ip = false;       //if you are using a canary token, leave this as false
+String append_char = "?";     //if you are using a canary token, this doesn't matter
+//if you are using your own webhook,with a bunch of GET
+//parameters then you would want this to be "&" so the IP
+//address becomes the final GET parameter
+
+FtpServer ftpSrv;   //set #define FTP_DEBUG in ESPCanary.h to see ftp verbose on serial
+
 SH1106Wire display(0x3C, SDA, SCL); // use builtin i2C
 
 // button and led pins use (https://iotbytes.wordpress.com/nodemcu-pinout/) for reference
@@ -51,9 +98,9 @@ void haxx_sniffer(uint8_t *buf, uint16_t len) {
 
   if (pkt_type == 0xA0 || pkt_type == 0xC0) { // flag deauth & dissassociation frames
     ++packet_rate;
-    if(pkt_type == 0xC0) {
+    if (pkt_type == 0xC0) {
       isDeauthentication = false;
-    }else{
+    } else {
       isDeauthentication = true;
     }
   }
@@ -72,7 +119,7 @@ char srcOctet[2], destOctet[2];
 int addr, fst, ft;
 String pktType;
 
-int filter = 0; // 0 = ALL, 1 = DEAUTH, 2 = PROBE REQ
+int filter = 0;
 
 const char *filters[12] = {
   "ALL",
@@ -177,54 +224,53 @@ void displayMenu() {
   display.drawLine(0, 48, 127, 48);
 }
 
-// TODO: fix this
 bool checkPacketReturnTypes(int filter, int ft, int fst) {
   return (
-    filter == 0  
-    || (filter == 1 && ft == 0 and fst == 12)
-    || (filter == 2 && ft == 0 and fst == 4 )
-    || (filter == 3 && ft == 0 and (fst == 0 or fst == 1))
-    || (filter == 4 && ft == 0 and (fst == 2 or fst == 3))
-    || (filter == 5 && ft == 0 and fst == 8)
-    || (filter == 6 && ft == 0 and fst == 10)
-    || (filter == 7 && ft == 0 and fst == 11)
-    || (filter == 8 && ft == 0)
-    || (filter == 9 && ft == 1)
-    || (filter == 10 && ft == 2)
-    || filter == 11
-  );
+           filter == 0
+           || (filter == 1 && ft == 0 and fst == 12)
+           || (filter == 2 && ft == 0 and fst == 4 )
+           || (filter == 3 && ft == 0 and (fst == 0 or fst == 1))
+           || (filter == 4 && ft == 0 and (fst == 2 or fst == 3))
+           || (filter == 5 && ft == 0 and fst == 8)
+           || (filter == 6 && ft == 0 and fst == 10)
+           || (filter == 7 && ft == 0 and fst == 11)
+           || (filter == 8 && ft == 0)
+           || (filter == 9 && ft == 1)
+           || (filter == 10 && ft == 2)
+           || filter == 11
+         );
 }
 
 void printPacket() { // function to print wifi packets to the screen
 
   // flag packet w/ frame + subframe type
-    if      (ft == 0 and (fst == 0 or fst == 1)) pktType = "Association Req.";
-    else if (ft == 0 and (fst == 2 or fst == 3)) pktType = "Re-Assoc";
-    else if (ft == 0 and fst == 4) pktType = "Probe Request";
-    else if (ft == 0 and fst == 8) pktType = "Beacon";
-    else if (ft == 0 and fst == 10) pktType = "Disassociation";
-    else if (ft == 0 and fst == 11) pktType = "Authentication";
-    else if (ft == 0 and fst == 12) pktType = "De-Authentication";
-    else if (ft == 0) pktType = "Management";
-    else if (ft == 1) pktType = "Control";
-    else if (ft == 2) pktType = "Data";
-    else pktType = "Extension";
+  if      (ft == 0 and (fst == 0 or fst == 1)) pktType = "Association Req.";
+  else if (ft == 0 and (fst == 2 or fst == 3)) pktType = "Re-Assoc";
+  else if (ft == 0 and fst == 4) pktType = "Probe Request";
+  else if (ft == 0 and fst == 8) pktType = "Beacon";
+  else if (ft == 0 and fst == 10) pktType = "Disassociation";
+  else if (ft == 0 and fst == 11) pktType = "Authentication";
+  else if (ft == 0 and fst == 12) pktType = "De-Authentication";
+  else if (ft == 0) pktType = "Management";
+  else if (ft == 1) pktType = "Control";
+  else if (ft == 2) pktType = "Data";
+  else pktType = "Extension";
 
-    if(filter == 0 || (String)filterNames[filter] == pktType) {
-      srcMac = packet[2];
-      display.drawString(0, 14, "PKT: "); display.drawString(30, 14, pktType);
-      display.drawString(0, 22, "SRC: "); display.drawString(30, 22, srcMac);
-      display.drawString(0, 30, "DST: "); display.drawString(30, 30, packet[3]);
-      display.drawString(0, 38, "RSS: "); display.drawString(30, 38, packet[4]);
-      display.drawString(0, 46, "CH: "); display.drawString(30, 46, packet[5]);
-      display.drawString(0, 54, "SSID: ");
-      if (packet[6].length() < 18) {
-        display.drawString(30, 54, packet[6]);
-      }
-      else if (packet[6].length() > 1) {
-        display.drawString(30, 54, packet[6].substring(0, 17 ) + "...");
-      }
+  if (filter == 0 || (String)filterNames[filter] == pktType) {
+    srcMac = packet[2];
+    display.drawString(0, 14, "PKT: "); display.drawString(30, 14, pktType);
+    display.drawString(0, 22, "SRC: "); display.drawString(30, 22, srcMac);
+    display.drawString(0, 30, "DST: "); display.drawString(30, 30, packet[3]);
+    display.drawString(0, 38, "RSS: "); display.drawString(30, 38, packet[4]);
+    display.drawString(0, 46, "CH: "); display.drawString(30, 46, packet[5]);
+    display.drawString(0, 54, "SSID: ");
+    if (packet[6].length() < 18) {
+      display.drawString(30, 54, packet[6]);
     }
+    else if (packet[6].length() > 1) {
+      display.drawString(30, 54, packet[6].substring(0, 17 ) + "...");
+    }
+  }
 
 }
 
@@ -243,6 +289,7 @@ void menuButtonPress() {
 
   if (rState == LOW) {
     displayState = menuPointer + 1;
+    Serial.print(displayState);
     delay(300);
   }
 }
@@ -264,6 +311,13 @@ void checkForPress() {
   }
 
   prState = rState;
+}
+
+void checkForBackButton() {
+  lState = digitalRead(leftButton);
+  if (lState == 0) {
+    displayState = 0;
+  }
 }
 
 
@@ -296,18 +350,78 @@ void updateMenu() { // update scroll menu and packet type selection
 }
 
 void setup() {
+  Serial.begin(115200);
   pinMode(leftButton, INPUT_PULLUP);
   pinMode(rightButton, INPUT_PULLUP);
   pinMode(led, OUTPUT);
 
+
+  Serial.println();
+  Serial.println("     ___       __   ___  ________  ________  ________           ___  __    ___  _________");
+  Serial.println("    |\\  \\     |\\  \\|\\  \\|\\   ____\\|\\   __  \\|\\   ___  \\        |\\  \\|\\  \\ |\\  \\|\\___   ___\\");
+  Serial.println("     \\ \\  \\    \\ \\  \\ \\  \\ \\  \\___|\\ \\  \\|\\  \\ \\  \\\\ \\  \\       \\ \\  \\/  /|\\ \\  \\|___ \\  \\_|");
+  Serial.println("      \\ \\  \\  __\\ \\  \\ \\  \\ \\  \\    \\ \\  \\\\\\  \\ \\  \\\\ \\  \\       \\ \\   ___  \\ \\  \\   \\ \\  \\\\");
+  Serial.println("       \\ \\  \\|\\__\\_\\  \\ \\  \\ \\  \\____\\ \\  \\\\\\  \\ \\  \\\\ \\  \\       \\ \\  \\\\ \\  \\ \\  \\   \\ \\  \\\\");
+  Serial.println("        \\ \\____________\\ \\__\\ \\_______\\ \\_______\\ \\__\\\\ \\__\\       \\ \\__\\\\ \\__\\ \\__\\   \\ \\__\\\\");
+  Serial.println("         \\|____________|\\|__|\\|_______|\\|_______|\\|__| \\|__|        \\|__| \\|__|\\|__|    \\|__|");
+  Serial.println();
+  Serial.println("\ngithub.com/angelina-tsuboi/ESP8266-WiCon-Kit");
+  Serial.println("A compact and portable WiFi reconnaissance suite based on the ESP8266");
+  Serial.println();
+
+#if HAVE_NETDUMP
+  phy_capture = dump;
+#endif
+
   delay(500);
-  // digitalWrite(led, HIGH);
-  Serial.begin(115200);
   display.init();
   display.flipScreenVertically();
   display.setTextAlignment(TEXT_ALIGN_LEFT);
   display.setFont(ArialMT_Plain_10);
-  esppl_init(cb);
+
+  WiFi.mode(WIFI_STA);
+  WiFi.begin(STASSID, STAPSK);
+  while (WiFi.status() != WL_CONNECTED) {
+    Serial.print('.');
+    delay(500);
+  }
+  Serial.printf("\nSTA: %s (dns: %s / %s)\n",
+                WiFi.localIP().toString().c_str(),
+                WiFi.dnsIP(0).toString().c_str(),
+                WiFi.dnsIP(1).toString().c_str());
+
+  // give DNS servers to AP side
+  dhcps_set_dns(0, WiFi.dnsIP(0));
+  dhcps_set_dns(1, WiFi.dnsIP(1));
+
+  WiFi.softAPConfig(  // enable AP, with android-compatible google domain
+    IPAddress(172, 217, 28, 254),
+    IPAddress(172, 217, 28, 254),
+    IPAddress(255, 255, 255, 0));
+  WiFi.softAP(NEWSSID, NEWPASS);
+  Serial.printf("AP: %s\n", WiFi.softAPIP().toString().c_str());
+
+  Serial.printf("Heap before: %d\n", ESP.getFreeHeap());
+  err_t ret = ip_napt_init(NAPT, NAPT_PORT);
+  Serial.printf("ip_napt_init(%d,%d): ret=%d (OK=%d)\n", NAPT, NAPT_PORT, (int)ret, (int)ERR_OK);
+  if (ret == ERR_OK) {
+    ret = ip_napt_enable_no(SOFTAP_IF, 1);
+    Serial.printf("ip_napt_enable_no(SOFTAP_IF): ret=%d (OK=%d)\n", (int)ret, (int)ERR_OK);
+    if (ret == ERR_OK) {
+      Serial.printf("WiFi Network '%s' with password '%s' is now NATed behind '%s'\n", NEWSSID, NEWPASS, STASSID);
+    }
+  }
+  Serial.printf("Heap after napt init: %d\n", ESP.getFreeHeap());
+  if (ret != ERR_OK) {
+    Serial.printf("NAPT initialization failed\n");
+  }
+
+  /////FTP Setup, ensure SPIFFS is started before ftp;  /////////
+  if (SPIFFS.begin()) {
+    Serial.println("SPIFFS opened!");
+    ftpSrv.begin(ftp_user, ftp_pass, canary, append_ip, append_char); //username, password for ftp.  set ports in ESPCanary.h  (default 21, 50009 for PASV)
+    esppl_init(cb);
+  }
 }
 
 // HAXX Detector
@@ -319,21 +433,21 @@ void startAttack() {
 
 void displayHaxxScreen() {
   display.clear();
-    String displayText = "Deauthentication Attack!";
-    if(attackInProgress && isDeauthentication) {
-      displayText = "Deauthentication Attack!";
-      display.drawXbm(50, 5, warning_width, warning_height, warning);
-      display.drawString(5, 44, displayText);
-    }else if(attackInProgress && !isDeauthentication) {
-      displayText = "Dissassociation Attack!";
-      display.drawXbm(50, 5, warning_width, warning_height, warning);
-      display.drawString(5, 44, displayText);
-    }else{
-      display.drawXbm(50, 5, wifi_width, wifi_height, wifi);
-      display.drawString(20, 44, displayText);
-    }
-    
-    display.display();
+  String displayText = "Deauthentication Attack!";
+  if (attackInProgress && isDeauthentication) {
+    displayText = "Deauthentication Attack!";
+    display.drawXbm(50, 5, warning_width, warning_height, warning);
+    display.drawString(5, 44, displayText);
+  } else if (attackInProgress && !isDeauthentication) {
+    displayText = "Dissassociation Attack!";
+    display.drawXbm(50, 5, warning_width, warning_height, warning);
+    display.drawString(5, 44, displayText);
+  } else {
+    display.drawXbm(50, 5, wifi_width, wifi_height, wifi);
+    display.drawString(20, 44, displayText);
+  }
+
+  display.display();
 }
 
 void checkHaxxPress() {
@@ -343,13 +457,37 @@ void checkHaxxPress() {
   }
 }
 
-void endAttack(){
+void endAttack() {
   digitalWrite(led, LOW);
   attackInProgress = false;
 }
 
+// FTP Honey Pot Display
+void displayFTPHoneyPot() {
+  display.clear();
+  display.drawLine(0, 12, 127, 12);
+  display.drawLine(20, 0, 20, 12);
+  display.fillTriangle(8, 5, 11, 2, 11, 8);
+  display.drawString(25, 0, "FTP Honeypot");
+  display.drawString(0, 14, "STASSID: "); display.drawString(48, 14, STASSID);
+  display.drawString(0, 27, "SSID: "); display.drawString(30, 27, NEWSSID);
+  display.drawString(0, 40, "PASS: "); display.drawString(32, 40, NEWPASS);
+  display.display();
+}
+
+#else
+
+#error "NAPT not supported in this configuration"
+
+void setup() {
+  Serial.begin(115200);
+  Serial.printf("\n\nNAPT not supported in this configuration\n");
+}
+
+#endif
 
 void loop() {
+  ftpSrv.handleFTP();
   if (displayState == 0) {
     menuButtonPress();
     display.clear();
@@ -404,5 +542,8 @@ void loop() {
       short ch = channels[ch_index];
       esppl_set_channel(ch);
     }
+  } else if (displayState == 3) {
+    displayFTPHoneyPot();
+    checkForBackButton();
   }
 }
