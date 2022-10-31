@@ -369,15 +369,19 @@ void setup() {
   Serial.println("A compact and portable WiFi reconnaissance suite based on the ESP8266");
   Serial.println();
 
+  display.init();
+  display.flipScreenVertically();
+  display.setTextAlignment(TEXT_ALIGN_LEFT);
+  display.setFont(ArialMT_Plain_10);
+  display.drawXbm(5, 5, icon_width, icon_height, icon);
+  display.drawString(17, 45, "By Angelina Tsuboi");
+  display.display();
+
 #if HAVE_NETDUMP
   phy_capture = dump;
 #endif
 
   delay(500);
-  display.init();
-  display.flipScreenVertically();
-  display.setTextAlignment(TEXT_ALIGN_LEFT);
-  display.setFont(ArialMT_Plain_10);
 
   WiFi.mode(WIFI_STA);
   WiFi.begin(STASSID, STAPSK);
