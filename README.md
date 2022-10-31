@@ -42,6 +42,9 @@
 ## Schematic
 <img src="https://github.com/angelina-tsuboi/ESP8266-WiCon-Kit/blob/master/Assets/WiCon_Schematic.png" alt="WiCon logo" width="700"/>
 
+## Image
+<img src="https://github.com/angelina-tsuboi/ESP8266-WiCon-Kit/blob/master/Assets/WiCon_Preview.png" alt="WiCon preview" width="700"/>
+
 ## Special Thanks and Resources
 The WiCon kit is a derivation of previous ESP8266 WiFi recon features developed by Spacehuhn, Alex Lynd, and Kody Kinzie. Check out the resources below!
 - [SpacehuhnTech/DeauthDetector](https://github.com/SpacehuhnTech/DeauthDetector)
