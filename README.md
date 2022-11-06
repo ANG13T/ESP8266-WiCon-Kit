@@ -45,6 +45,17 @@
 ## Image
 <img src="https://github.com/angelina-tsuboi/ESP8266-WiCon-Kit/blob/master/Assets/WiCon_Preview.png" alt="WiCon preview" width="700"/>
 
+## Set up
+- Arduino IDE with the following URL added under Preferences -> Additional board manager URL's: http://arduino.esp8266.com/stable/package_esp8266com_index.json
+
+- ESP8266 boards added in Arduino IDE by going to Tools -> Boards -> Boards Manager, and installing ESP8266 by ESP8266 Community
+
+- ESPcanary library installed in Arduino IDE by going to Sketch -> Include Library -> Manage Libraries and installing "ESPcanary" by Dan Hoover
+
+- Install Zip file from https://github.com/wonho-maker/Adafruit_SH1106 and unzip the file inside Arduino -> libraries
+
+- Adafruit GFX library installed in Arduino IDE by going to Sketch -> Include Library -> Manage Libraries and installing "Adafruit GFX Library" by Adafruit
+
 ## Special Thanks and Resources
 The WiCon kit is a derivation of previous ESP8266 WiFi recon features developed by Spacehuhn, Alex Lynd, and Kody Kinzie. Check out the resources below!
 - [SpacehuhnTech/DeauthDetector](https://github.com/SpacehuhnTech/DeauthDetector)
