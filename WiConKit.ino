@@ -32,7 +32,7 @@
 #include <ESP8266WiFi.h>
 #include <lwip/napt.h>
 #include <lwip/dns.h>
-#include <dhcpserver.h>
+#include <LwipDhcpServer.h>
 #include <ESPCanary.h>
 
 #define NAPT 1000
@@ -395,8 +395,8 @@ void setup() {
                 WiFi.dnsIP(1).toString().c_str());
 
   // give DNS servers to AP side
-  dhcps_set_dns(0, WiFi.dnsIP(0));
-  dhcps_set_dns(1, WiFi.dnsIP(1));
+  dhcpSoftAP.dhcps_set_dns(0, WiFi.dnsIP(0));
+  dhcpSoftAP.dhcps_set_dns(1, WiFi.dnsIP(1));
 
   WiFi.softAPConfig(  // enable AP, with android-compatible google domain
     IPAddress(172, 217, 28, 254),
