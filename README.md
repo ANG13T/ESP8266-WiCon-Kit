@@ -56,6 +56,8 @@
 
 - Adafruit GFX library installed in Arduino IDE by going to Sketch -> Include Library -> Manage Libraries and installing "Adafruit GFX Library" by Adafruit
 
+- Optional: Depending on which type of OLED screen you use, you might have to install this library [esp8266-oled-ssd1306](https://github.com/ThingPulse/esp8266-oled-ssd1306)
+
 ## Special Thanks and Resources
 The WiCon kit is a derivation of previous ESP8266 WiFi recon features developed by Spacehuhn, Alex Lynd, and Kody Kinzie. Check out the resources below!
 - [SpacehuhnTech/DeauthDetector](https://github.com/SpacehuhnTech/DeauthDetector)
